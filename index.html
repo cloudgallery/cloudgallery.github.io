@@ -1,231 +1,756 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
-    <title>Responsive UI dengan Zoom Dinamis: Solusi Presisi untuk Web Aplikasi</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rita Gallery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        glass: "rgba(255, 255, 255, 0.05)",
+                        glassBorder: "rgba(255, 255, 255, 0.1)",
+                        neon: "#00f3ff",
+                        neonPink: "#ff00ff"
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
-        html, body {
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-            font-family: sans-serif;
-        }
-        
         body {
-            background: orange;
-            position: absolute;
+            background-color: #050505;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 243, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 255, 0.1) 0%, transparent 20%);
+            background-attachment: fixed;
+            color: #e0e0e0;
         }
         
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 999;
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00f3ff; }
+
+        /* Glassmorphism Cards */
+        .glass-panel {
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        
-        .fullWidth {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: black;
-            color: white;
+
+        .file-card {
+            transition: all 0.3s ease;
         }
-        
+        .file-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
+            border-color: rgba(0, 243, 255, 0.3);
+        }
+
+        /* Checkbox Styling */
+        .custom-checkbox {
+            appearance: none;
+            background-color: rgba(0,0,0,0.5);
+            border: 1px solid #555;
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+        }
+        .custom-checkbox::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #00f3ff;
+            border-radius: 2px;
+        }
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+        }
+
+        /* Loader */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-left-color: #00f3ff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body>
-   
-    <div id="info">
-        <div>Viewport: <span id="viewport">-</span></div>
-        <div>Base Size: <span id="basesize">-</span></div>
-        <div>Zoom Level: <span id="zoom">1</span></div>
-        <div>User Zoom: <span id="userzoom">100%</span></div>
+<body class="min-h-screen pb-20">
+
+    <nav class="sticky top-0 z-40 glass-panel border-b-0 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <i class="fa-solid fa-cloud text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white">RITA <span class="text-neon font-light">GALLERY</span></h1>
+                    <p class="text-[10px] text-gray-400 tracking-widest uppercase">Private Cloud Storage</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <input type="file" id="fileInput" class="hidden" multiple>
+                
+                <button onclick="document.getElementById('fileInput').click()" 
+                    class="group relative px-5 py-2 rounded-full bg-cyan-900/30 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500 hover:text-black transition-all duration-300 overflow-hidden">
+                    <div class="absolute inset-0 w-0 bg-cyan-400 transition-all duration-[250ms] ease-out group-hover:w-full opacity-20"></div>
+                    <span class="relative flex items-center gap-2 font-medium text-sm">
+                        <i class="fa-solid fa-upload"></i> Upload
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <div class="border-t border-white/5 bg-black/20 backdrop-blur-md">
+            <div class="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center gap-3 overflow-x-auto no-scrollbar">
+                
+                <div class="flex bg-white/5 rounded-lg p-1 gap-1">
+                    <button onclick="setFilterType('all')" id="btn-all" class="filter-btn px-3 py-1 rounded text-xs font-medium bg-white/10 text-white shadow">All</button>
+                    <button onclick="setFilterType('image')" id="btn-image" class="filter-btn px-3 py-1 rounded text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition">Images</button>
+                    <button onclick="setFilterType('video')" id="btn-video" class="filter-btn px-3 py-1 rounded text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition">Videos</button>
+                    <button onclick="setFilterType('audio')" id="btn-audio" class="filter-btn px-3 py-1 rounded text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition">Audio</button>
+                </div>
+
+                <div class="w-[1px] h-6 bg-white/10 mx-1"></div>
+
+                <select id="yearFilter" onchange="applyFilters()" class="bg-transparent text-xs text-gray-300 border border-white/10 rounded px-2 py-1 focus:border-neon outline-none">
+                    <option value="all">All Years</option>
+                </select>
+                <select id="monthFilter" onchange="applyFilters()" class="bg-transparent text-xs text-gray-300 border border-white/10 rounded px-2 py-1 focus:border-neon outline-none">
+                    <option value="all">All Months</option>
+                    <option value="01">January</option>
+                    <option value="02">February</option>
+                    <option value="03">March</option>
+                    <option value="04">April</option>
+                    <option value="05">May</option>
+                    <option value="06">June</option>
+                    <option value="07">July</option>
+                    <option value="08">August</option>
+                    <option value="09">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+
+                <div class="flex-grow"></div>
+                <span id="totalItems" class="text-[10px] text-gray-500 uppercase tracking-widest">0 Files</span>
+            </div>
+        </div>
+    </nav>
+
+    <div id="selectionBar" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 glass-panel px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl shadow-cyan-900/20 translate-y-32 transition-transform duration-300 border border-neon/30">
+        <div class="flex items-center gap-2 border-r border-white/10 pr-4">
+            <span class="text-neon font-bold text-lg" id="selectedCount">0</span>
+            <span class="text-xs text-gray-400 uppercase tracking-wide">Selected</span>
+        </div>
+        
+        <div class="flex gap-2">
+            <button onclick="handleBatchShare()" class="w-10 h-10 rounded-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white flex items-center justify-center transition" title="Share">
+                <i class="fa-solid fa-share-nodes"></i>
+            </button>
+            
+            <button onclick="shareToApp('wa')" class="w-10 h-10 rounded-full bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white flex items-center justify-center transition md:flex hidden" title="WhatsApp">
+                <i class="fa-brands fa-whatsapp"></i>
+            </button>
+            
+            <button onclick="handleBatchDelete()" class="w-10 h-10 rounded-full bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white flex items-center justify-center transition" title="Delete">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+
+             <button onclick="clearSelection()" class="w-10 h-10 rounded-full hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition ml-2">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
     </div>
-    <div class="fullWidth">
-        <h1> hello world! </h1>
-        <p> I am the ruler of the world aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</p>
-		<button style="padding: 0.8rem 1.5rem;font-size: 1.1rem;">
-		aaaaaaaaaaaaaaa
-		</button>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 min-h-[60vh]">
+        <div id="gallery" class="space-y-10">
+            <div class="flex flex-col items-center justify-center pt-20 text-gray-600">
+                <div class="loader mb-4"></div>
+                <p>Initializing Neural Link...</p>
+            </div>
+        </div>
+    </main>
+
+    <div id="viewerModal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-xl transition-opacity opacity-0" id="modalBackdrop"></div>
+        
+        <div class="absolute inset-0 flex flex-col items-center justify-center p-4">
+            
+            <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/80 to-transparent">
+                <div class="text-white/80 text-sm truncate max-w-[60%]" id="viewerTitle">Filename.jpg</div>
+                <div class="flex gap-4">
+                    <a id="downloadLink" href="#" class="text-white/60 hover:text-neon transition"><i class="fa-solid fa-download"></i></a>
+                    <button onclick="closeModal()" class="text-white hover:text-red-500 transition text-xl"><i class="fa-solid fa-times"></i></button>
+                </div>
+            </div>
+
+            <button onclick="playPrev()" class="absolute left-4 z-20 w-12 h-12 rounded-full bg-white/5 hover:bg-neon/20 text-white/50 hover:text-neon flex items-center justify-center transition backdrop-blur-sm hidden md:flex">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button onclick="playNext()" class="absolute right-4 z-20 w-12 h-12 rounded-full bg-white/5 hover:bg-neon/20 text-white/50 hover:text-neon flex items-center justify-center transition backdrop-blur-sm hidden md:flex">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+
+            <div id="viewerContent" class="relative w-full max-w-6xl max-h-[85vh] flex justify-center items-center z-10">
+                </div>
+
+            <div class="absolute bottom-10 flex gap-8 md:hidden z-20">
+                <button onclick="playPrev()" class="p-4 text-white/70 active:text-neon"><i class="fa-solid fa-backward-step fa-xl"></i></button>
+                <button onclick="playNext()" class="p-4 text-white/70 active:text-neon"><i class="fa-solid fa-forward-step fa-xl"></i></button>
+            </div>
+
+        </div>
     </div>
+
     <script>
-     
+        /* ================= CONFIGURATION ================= */
 
-// updateZoom-module.js
-let zoomIndicatorTimeout;
-let zoomIndicatorElement = null;
+        const WORKER_URL = "https://private-gallery.blacksoftchild.workers.dev";
+        
+        /* ================= STATE MANAGEMENT ================= */
+        let allFiles = [];
+        let filteredFiles = []; // Files currently shown on screen (for playlist)
+        let selectedIds = new Set();
+        let currentFilter = { type: 'all', year: 'all', month: 'all' };
+        let currentMediaIndex = -1;
 
-const baseDesktop = { width: 1920, height: 1080 };
-const baseMobile = { width: 375, height: 667 };
+        /* ================= INITIALIZATION ================= */
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchFiles();
+        });
 
-const viewportInfo = document.getElementById('viewport');
-const zoomInfo = document.getElementById('zoom');
-const baseSizeInfo = document.getElementById('basesize');
-const userZoomInfo = document.getElementById('userzoom');
+        async function fetchFiles() {
+            try {
+                const res = await fetch(`${WORKER_URL}/list`);
+                if (!res.ok) throw new Error("Network response was not ok");
+                
+                allFiles = await res.json();
+                
+                // Populate Year Filter dynamically
+                const years = [...new Set(allFiles.map(f => f.release_tag.split('-')[0]))].sort().reverse();
+                const yearSelect = document.getElementById('yearFilter');
+                years.forEach(y => {
+                    const opt = document.createElement('option');
+                    opt.value = y;
+                    opt.innerText = y;
+                    yearSelect.appendChild(opt);
+                });
 
-function supportsZoom() {
-    return 'zoom' in document.documentElement.style;
-}
+                applyFilters();
+            } catch (err) {
+                document.getElementById('gallery').innerHTML = `
+                    <div class="text-center text-red-400 p-10 glass-panel rounded-lg">
+                        <i class="fa-solid fa-triangle-exclamation text-4xl mb-3"></i><br>
+                        Connection Lost. Please refresh.
+                    </div>`;
+            }
+        }
 
-const zoomSupported = supportsZoom();
+        /* ================= LOGIC: FILE TYPES ================= */
+		function getFileType(filename) {
+			if (!filename.includes('.')) return 'other';
+			const ext = filename.split('.').pop().toLowerCase();
+			
+			// Media
+			if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)) return 'image';
+			if (['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi'].includes(ext)) return 'video';
+			if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) return 'audio';
+			
+			// Code (Penting untuk Copy Paste)
+			if (['html', 'css', 'js', 'json', 'php', 'py', 'java', 'cpp', 'sql', 'sh', 'xml', 'ts', 'md', 'txt', 'env'].includes(ext)) return 'code';
+			
+			// Documents (PDF & Office)
+			if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'].includes(ext)) return 'document';
+			
+			return 'other';
+		}
 
-function renderBrowserAlert() {
-    const browserAlert = document.createElement('div');
-    browserAlert.classList.add('browser-alert');
-    browserAlert.textContent = 'Browser Anda tidak mendukung fitur zoom yang digunakan browser lainnya.';
-    
-    const style = `
-        display: block;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: #ff5555;
-        color: white;
-        text-align: center;
-        padding: 15px;
-        z-index: 10000;
-        font-weight: bold;
-    `.replace(/\s+/g, ' ').trim();
-    
-    browserAlert.style.cssText = style;
-    document.body.appendChild(browserAlert);
-}
+        /* ================= LOGIC: FILTERING ================= */
+        function setFilterType(type) {
+            currentFilter.type = type;
+            // Update UI buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = "filter-btn px-3 py-1 rounded text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition";
+            });
+            const activeBtn = document.getElementById(`btn-${type}`);
+            activeBtn.className = "filter-btn px-3 py-1 rounded text-xs font-medium bg-cyan-900/40 text-cyan-400 border border-cyan-500/30 shadow shadow-cyan-500/20";
+            
+            applyFilters();
+        }
 
-if (!zoomSupported) {
-    renderBrowserAlert();
-} 
+        function applyFilters() {
+            currentFilter.year = document.getElementById('yearFilter').value;
+            currentFilter.month = document.getElementById('monthFilter').value;
 
-let userZoomLevel = 1.0; 
+            filteredFiles = allFiles.filter(file => {
+                const type = getFileType(file.name);
+                const [year, month] = (file.release_tag || "0000-00").split('-');
 
-function createZoomIndicator() {
-    if (zoomIndicatorElement) return;
-    
-    const zoomIndicator = document.createElement('div');
-    zoomIndicator.classList.add('zoom-indicator');
-    
-    const style = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.75);
-        color: white;
-        padding: 15px 30px;
-        border-radius: 8px;
-        font-size: 24px;
-        font-weight: bold;
-        z-index: 10001;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-    `.replace(/\s+/g, ' ').trim();
-    
-    zoomIndicator.style.cssText = style;
-    document.body.appendChild(zoomIndicator);
-    zoomIndicatorElement = zoomIndicator;
-}
+                const typeMatch = currentFilter.type === 'all' || type === currentFilter.type;
+                const yearMatch = currentFilter.year === 'all' || year === currentFilter.year;
+                const monthMatch = currentFilter.month === 'all' || month === currentFilter.month;
 
-function showZoomIndicator() {
-    if (!zoomIndicatorElement) return;
-    
-    clearTimeout(zoomIndicatorTimeout);
-    const percentage = Math.round(userZoomLevel * 100);
-    zoomIndicatorElement.textContent = `${percentage}%`;
-    zoomIndicatorElement.style.opacity = '1';
+                return typeMatch && yearMatch && monthMatch;
+            });
 
-    zoomIndicatorTimeout = setTimeout(() => {
-        zoomIndicatorElement.style.opacity = '0';
-    }, 1500);
-}
+            document.getElementById('totalItems').innerText = `${filteredFiles.length} FILES`;
+            renderGallery(filteredFiles);
+        }
 
-function updateZoom() {
-    if (!zoomSupported) return;
-    
-    const currentWidth = window.innerWidth;
-    const currentHeight = window.innerHeight;
-    let baseSize = (currentWidth > 768) ? baseDesktop : baseMobile;
+        /* ================= LOGIC: RENDERING ================= */
+        function renderGallery(files) {
+            const galleryDiv = document.getElementById('gallery');
+            galleryDiv.innerHTML = "";
 
-    const ratioWidth = currentWidth / baseSize.width;
-    const ratioHeight = currentHeight / baseSize.height;
-    const responsiveZoom = Math.min(ratioWidth, ratioHeight);
-    const finalZoom = responsiveZoom * userZoomLevel;
+            if (files.length === 0) {
+                galleryDiv.innerHTML = `
+                    <div class="text-center py-20 opacity-50">
+                        <i class="fa-solid fa-folder-open text-6xl mb-4 text-gray-600"></i>
+                        <p>No Data Found</p>
+                    </div>`;
+                return;
+            }
 
-    document.documentElement.style.zoom = finalZoom;  
+            // Group by Date Tag
+            const grouped = files.reduce((acc, file) => {
+                const groupName = file.release_tag || "Unknown Date";
+                if (!acc[groupName]) acc[groupName] = [];
+                acc[groupName].push(file);
+                return acc;
+            }, {});
 
-    
-    if (viewportInfo) viewportInfo.textContent = `${currentWidth} x ${currentHeight}`;
-    if (baseSizeInfo) baseSizeInfo.textContent = `${baseSize.width} x ${baseSize.height}`;
-    if (zoomInfo) zoomInfo.textContent = finalZoom.toFixed(4);
-    if (userZoomInfo) userZoomInfo.textContent = `${Math.round(userZoomLevel * 100)}%`;
-}
+            const sortedKeys = Object.keys(grouped).sort().reverse();
 
-window.addEventListener('keydown', (event) => {
-    if (!zoomSupported || !(event.ctrlKey || event.metaKey)) return;
-    
-    let handled = false;
-    switch (event.key) {
-        case '+':
-        case '=':
-            userZoomLevel = Math.min(userZoomLevel + 0.1, 3);
-            handled = true;
-            break;
-        case '-':
-            userZoomLevel = Math.max(userZoomLevel - 0.1, 0.5);
-            handled = true;
-            break;
-        case '0':
-            userZoomLevel = 1.0;
-            handled = true;
-            break;
-    }
+            sortedKeys.forEach(groupKey => {
+                const groupFiles = grouped[groupKey];
+                const section = document.createElement('div');
+                section.className = "animate-[fadeIn_0.5s_ease-out]";
+                
+                // Header with Select All
+                section.innerHTML = `
+                    <div class="flex items-center justify-between mb-4 sticky top-[70px] z-30 py-2 bg-[#050505]/80 backdrop-blur-md border-b border-white/5">
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">${groupKey}</h2>
+                            <span class="text-xs bg-white/10 px-2 py-0.5 rounded text-gray-400">${groupFiles.length}</span>
+                        </div>
+                        <button onclick="toggleGroupSelect('${groupKey}')" class="text-xs text-cyan-400 hover:text-white transition flex items-center gap-1">
+                            <i class="fa-solid fa-check-double"></i> Select All
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        ${groupFiles.map(file => createCardHTML(file, groupKey)).join('')}
+                    </div>
+                `;
+                galleryDiv.appendChild(section);
+            });
+        }
 
-    if (handled) {
-        event.preventDefault();
-        updateZoom();
-        showZoomIndicator();
-    }
-});
+        function createCardHTML(file, groupTag) {
+            const type = getFileType(file.name);
+            const isSelected = selectedIds.has(file.id);
+            let content = "";
+            let icon = "";
 
-window.addEventListener('wheel', (event) => {
-    if (event.ctrlKey) {
-        event.preventDefault();
-        userZoomLevel += (event.deltaY < 0) ? 0.05 : -0.05;
-        userZoomLevel = Math.max(0.5, Math.min(userZoomLevel, 3));
-        updateZoom();
-        showZoomIndicator();
-    }
-}, { passive: false });
+            if (type === 'image') {
+                content = `<img src="${file.url}" loading="lazy" class="w-full h-full object-cover transition duration-500 group-hover:scale-110">`;
+                icon = `<i class="fa-solid fa-image text-white/50"></i>`;
+            } else if (type === 'video') {
+                // Video Play on Hover trick using muted video
+                content = `
+                    <div class="w-full h-full bg-gray-900 flex items-center justify-center relative overflow-hidden">
+                         <video src="${file.url}#t=1.0" preload="metadata" muted class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition duration-300" onmouseover="this.play()" onmouseout="this.pause();this.currentTime=1;"></video>
+                         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <i class="fa-solid fa-play-circle text-4xl text-white/80 group-hover:scale-125 transition duration-300 shadow-xl"></i>
+                         </div>
+                    </div>`;
+                icon = `<i class="fa-solid fa-video text-neon"></i>`;
+            } else if (type === 'audio') {
+                content = `
+                    <div class="w-full h-full bg-gradient-to-br from-purple-900 to-gray-900 flex flex-col items-center justify-center p-4">
+                        <i class="fa-solid fa-music text-4xl text-neonPink mb-2 animate-pulse-slow"></i>
+                        <div class="w-full h-1 bg-white/20 rounded-full overflow-hidden mt-2">
+                            <div class="h-full bg-neonPink w-1/2"></div>
+                        </div>
+                    </div>`;
+                icon = `<i class="fa-solid fa-music text-neonPink"></i>`;
+            } else {
+                content = `
+                    <div class="w-full h-full bg-gray-800 flex flex-col items-center justify-center p-4">
+                        <i class="fa-solid fa-file text-4xl text-gray-500"></i>
+                        <span class="text-xs text-gray-400 mt-2 uppercase font-bold">${file.name.split('.').pop()}</span>
+                    </div>`;
+            }
 
-function initResponsiveUI() {
-    createZoomIndicator();
-    updateZoom();
-    
-    window.addEventListener('resize', () => {
-        requestAnimationFrame(updateZoom);
-    });
-    window.addEventListener('orientationchange', updateZoom);
-}
+            return `
+                <div class="group relative aspect-square glass-panel rounded-xl overflow-hidden cursor-pointer select-none file-card ${isSelected ? 'ring-2 ring-neon' : ''}"
+                     onclick="handleCardClick(event, '${file.id}')">
+                    
+                    <div class="absolute top-2 left-2 z-20">
+                        <input type="checkbox" 
+                               class="custom-checkbox transition-opacity duration-200 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}" 
+                               onchange="toggleSelect('${file.id}', event)"
+                               ${isSelected ? 'checked' : ''}>
+                    </div>
 
-//export { initResponsiveUI };
-initResponsiveUI()
+                    <div class="absolute top-2 right-2 z-10 bg-black/50 backdrop-blur-sm rounded-full w-6 h-6 flex items-center justify-center text-[10px]">
+                        ${icon}
+                    </div>
 
+                    <div class="w-full h-full" onclick="openViewer('${file.id}')">
+                        ${content}
+                    </div>
 
+                    <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 translate-y-full group-hover:translate-y-0 transition duration-300 z-10">
+                        <p class="text-xs text-white truncate font-medium">${file.name}</p>
+                        <p class="text-[10px] text-gray-400">${formatBytes(file.size)}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        /* ================= LOGIC: SELECTION ================= */
+        function handleCardClick(e, id) {
+            // Jika user klik checkbox, jangan trigger view
+            if (e.target.type === 'checkbox') return;
+            // Jika sudah dalam mode select (ada > 0 item dipilih), klik card = select
+            if (selectedIds.size > 0 && !e.target.closest('.custom-checkbox')) {
+                // Manual toggle select
+                const checkbox = document.querySelector(`input[onchange*="'${id}'"]`);
+                if(checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    toggleSelect(id, { target: checkbox, stopPropagation: ()=>{} });
+                }
+            } 
+            // Kalau tidak ada yg dipilih, fungsi onclick="openViewer" di div inner yang akan jalan
+        }
+
+        function toggleSelect(id, e) {
+            if(e) e.stopPropagation();
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            updateSelectionUI();
+        }
+
+        function toggleGroupSelect(groupTag) {
+            // Find all files in this group visible in current filteredFiles
+            const filesInGroup = filteredFiles.filter(f => (f.release_tag || "Unknown Date") === groupTag);
+            const allSelected = filesInGroup.every(f => selectedIds.has(f.id));
+
+            filesInGroup.forEach(f => {
+                if (allSelected) selectedIds.delete(f.id);
+                else selectedIds.add(f.id);
+            });
+            updateSelectionUI();
+            // Re-render to update checkbox visuals instantly without full redraw lag? 
+            // For now full render is safer to keep state sync, or we update DOM manually
+            renderGallery(filteredFiles); 
+        }
+
+        function clearSelection() {
+            selectedIds.clear();
+            updateSelectionUI();
+            renderGallery(filteredFiles);
+        }
+
+        function updateSelectionUI() {
+            const bar = document.getElementById('selectionBar');
+            const count = document.getElementById('selectedCount');
+            count.innerText = selectedIds.size;
+            
+            if (selectedIds.size > 0) {
+                bar.classList.remove('translate-y-32');
+            } else {
+                bar.classList.add('translate-y-32');
+            }
+        }
+
+        /* ================= LOGIC: ACTIONS (SHARE & DELETE) ================= */
+        async function handleBatchShare() {
+            const selectedFiles = allFiles.filter(f => selectedIds.has(f.id));
+            if (selectedFiles.length === 0) return;
+
+            // Prepare text
+            const links = selectedFiles.map(f => f.url).join('\n');
+            const title = `Sharing ${selectedFiles.length} files from Rita Gallery`;
+            const text = `Check out these files:\n${links}`;
+
+            // Mobile Native Share
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: title,
+                        text: text,
+                        url: selectedFiles.length === 1 ? selectedFiles[0].url : undefined
+                    });
+                } catch (err) {
+                    console.log('Share canceled');
+                }
+            } else {
+                // Fallback: Copy to clipboard
+                shareToApp('copy');
+            }
+        }
+
+        function shareToApp(app) {
+            const selectedFiles = allFiles.filter(f => selectedIds.has(f.id));
+            const links = selectedFiles.map(f => f.url).join('\n\n');
+            const text = encodeURIComponent(`Lihat file ini:\n${links}`);
+
+            if (app === 'wa') {
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+            } else if (app === 'tele') {
+                window.open(`https://t.me/share/url?url=${links}&text=Shared Files`, '_blank');
+            } else if (app === 'copy') {
+                navigator.clipboard.writeText(links);
+                alert(`${selectedFiles.length} links copied to clipboard!`);
+            }
+        }
+
+        async function handleBatchDelete() {
+            if (!confirm(`Are you sure you want to delete ${selectedIds.size} files? This cannot be undone.`)) return;
+            
+            // Show loading
+            const btn = document.querySelector('#selectionBar button[title="Delete"]');
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i>`;
+            
+            for (let id of selectedIds) {
+                try {
+                    await fetch(`${WORKER_URL}/delete/${id}`, { method: 'DELETE' });
+                } catch (e) {
+                    console.error("Delete failed", id);
+                }
+            }
+            
+            selectedIds.clear();
+            updateSelectionUI();
+            fetchFiles(); // Refresh grid
+        }
+
+        /* ================= LOGIC: VIEWER & PLAYLIST ================= */
+		async function openViewer(id) {
+			if (selectedIds.size > 0) {
+				const checkbox = document.querySelector(`input[onchange*="'${id}'"]`);
+				if(checkbox) {
+					checkbox.checked = !checkbox.checked;
+					toggleSelect(id, { stopPropagation: ()=>{} });
+				}
+				return;
+			}
+
+			const file = allFiles.find(f => f.id == id);
+			if (!file) return;
+
+			currentMediaIndex = filteredFiles.findIndex(f => f.id == id);
+
+			const modal = document.getElementById('viewerModal');
+			const backdrop = document.getElementById('modalBackdrop');
+			
+			// Tampilkan modal dulu dengan loading state
+			modal.classList.remove('hidden');
+			setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+			document.body.style.overflow = 'hidden';
+
+			// Load content (sekarang pakai await)
+			await loadViewerContent(file);
+		}
+
+		async function loadViewerContent(file) {
+			const contentDiv = document.getElementById('viewerContent');
+			const titleDiv = document.getElementById('viewerTitle');
+			const dlLink = document.getElementById('downloadLink');
+			
+			titleDiv.innerText = file.name;
+			dlLink.href = file.url;
+			dlLink.download = file.name;
+			
+			// Reset content & show simple loader inside viewer area
+			contentDiv.innerHTML = `<div class="loader"></div>`;
+			
+			const type = getFileType(file.name);
+
+			if (type === 'image') {
+				contentDiv.innerHTML = `<img src="${file.url}" class="max-w-full max-h-[80vh] object-contain shadow-[0_0_30px_rgba(0,0,0,0.5)] rounded-lg">`;
+			} 
+			else if (type === 'video') {
+				contentDiv.innerHTML = `
+					<video src="${file.url}" controls autoplay class="max-w-full max-h-[80vh] shadow-[0_0_30px_rgba(0,243,255,0.2)] rounded-lg border border-neon/30"></video>`;
+			} 
+			else if (type === 'audio') {
+				contentDiv.innerHTML = `
+					<div class="bg-gray-900/90 border border-neon/30 p-8 rounded-2xl w-full max-w-md text-center backdrop-blur-xl shadow-[0_0_50px_rgba(255,0,255,0.2)]">
+						<div class="w-32 h-32 mx-auto bg-gradient-to-tr from-purple-600 to-blue-600 rounded-full flex items-center justify-center mb-6 animate-pulse-slow">
+							<i class="fa-solid fa-music text-5xl text-white"></i>
+						</div>
+						<h3 class="text-white text-lg font-bold mb-4 truncate">${file.name}</h3>
+						<audio src="${file.url}" controls autoplay class="w-full"></audio>
+					</div>`;
+			} 
+			else if (type === 'code') {
+				// TAMPILAN KHUSUS CODE (MODERN STYLE)
+				try {
+					// Ambil raw content via worker
+					const res = await fetch(`${WORKER_URL}/raw/${file.id}`);
+					if (!res.ok) throw new Error('Failed to load code');
+					const text = await res.text();
+					
+					contentDiv.innerHTML = `
+						<div class="w-full max-w-5xl h-[80vh] glass-panel rounded-xl overflow-hidden flex flex-col border border-white/10 shadow-2xl">
+							<div class="flex justify-between items-center bg-black/40 px-4 py-2 border-b border-white/5">
+								<div class="flex items-center gap-3">
+									<span class="text-neon font-mono text-sm uppercase">${file.name.split('.').pop()}</span>
+									<span class="text-xs text-gray-500">${formatBytes(file.size)}</span>
+								</div>
+								<button onclick="navigator.clipboard.writeText(document.getElementById('codeBlock').innerText); alert('Copied!');" 
+										class="text-xs flex items-center gap-2 bg-white/5 hover:bg-neon/20 hover:text-neon px-3 py-1 rounded transition border border-white/5">
+									<i class="fa-regular fa-copy"></i> Copy Code
+								</button>
+							</div>
+							<div class="flex-1 overflow-auto p-4 bg-[#0a0a0a] text-left">
+								<pre class="font-mono text-sm text-gray-300 leading-relaxed"><code id="codeBlock">${escapeHtml(text)}</code></pre>
+							</div>
+						</div>`;
+				} catch (e) {
+					contentDiv.innerHTML = `<div class="text-red-400">Gagal memuat kode: ${e.message}</div>`;
+				}
+			} 
+			else if (type === 'document') {
+				// TAMPILAN DOKUMEN (PDF & OFFICE)
+				let viewerUrl = "";
+				const ext = file.name.split('.').pop().toLowerCase();
+				
+				if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+					// Microsoft Viewer
+					viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(file.url)}`;
+				} else {
+					// Google Viewer (PDF dll)
+					viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(file.url)}&embedded=true`;
+				}
+
+				contentDiv.innerHTML = `
+					<div class="w-full max-w-5xl h-[85vh] glass-panel rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-white">
+						<iframe src="${viewerUrl}" class="w-full h-full" frameborder="0"></iframe>
+					</div>`;
+			}
+			else {
+				// Fallback untuk file lain
+				contentDiv.innerHTML = `
+					<div class="bg-white/10 p-10 rounded-xl text-center">
+						<i class="fa-solid fa-file-arrow-down text-5xl mb-4 text-neon"></i>
+						<p class="mb-4">File preview not available</p>
+						<a href="${file.url}" class="bg-neon text-black px-6 py-2 rounded-full font-bold hover:bg-white transition">Download File</a>
+					</div>`;
+			}
+		}
+
+		function escapeHtml(text) {
+			return text
+				.replace(/&/g, "&amp;")
+				.replace(/</g, "&lt;")
+				.replace(/>/g, "&gt;")
+				.replace(/"/g, "&quot;")
+				.replace(/'/g, "&#039;");
+		}
+
+        function playNext() {
+            if (currentMediaIndex < filteredFiles.length - 1) {
+                currentMediaIndex++;
+                loadViewerContent(filteredFiles[currentMediaIndex]);
+            }
+        }
+
+        function playPrev() {
+            if (currentMediaIndex > 0) {
+                currentMediaIndex--;
+                loadViewerContent(filteredFiles[currentMediaIndex]);
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('viewerModal');
+            const backdrop = document.getElementById('modalBackdrop');
+            const content = document.getElementById('viewerContent');
+            
+            backdrop.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                content.innerHTML = ""; // Stop playback
+            }, 300);
+            document.body.style.overflow = 'auto';
+        }
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (document.getElementById('viewerModal').classList.contains('hidden')) return;
+            if (e.key === "Escape") closeModal();
+            if (e.key === "ArrowRight") playNext();
+            if (e.key === "ArrowLeft") playPrev();
+        });
+
+        /* ================= UTILS ================= */
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // Upload Handler
+        document.getElementById('fileInput').onchange = async (e) => {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            
+            // UI Feedback
+            const btn = document.querySelector('button[onclick*="fileInput"] span');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading...`;
+            
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    await fetch(`${WORKER_URL}/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                } catch(err) {
+                    alert('Upload failed: ' + file.name);
+                }
+            }
+            
+            btn.innerHTML = originalText;
+            fetchFiles(); // Refresh
+        };
     </script>
 </body>
 </html>
